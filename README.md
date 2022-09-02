@@ -1,7 +1,7 @@
 
 ![EJBCA](.github/ejbca-by-keyfactor_small.png)
 
-# Helm Chart for EJBCA Community [![Discuss](https://img.shields.io/badge/discuss-ejbca-ce?style=flat)](https://github.com/Keyfactor/ejbca-ce/discussions) ![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.9.0](https://img.shields.io/badge/AppVersion-7.9.0-informational?style=flat-square)
+# Helm Chart for EJBCA Community Meetup 2022 [![Discuss](https://img.shields.io/badge/discuss-ejbca-ce?style=flat)](https://github.com/Keyfactor/ejbca-ce/discussions) ![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.9.0](https://img.shields.io/badge/AppVersion-7.9.0-informational?style=flat-square)
 
 EJBCA covers all your needs – from certificate management, registration and enrollment to certificate validation.
 
