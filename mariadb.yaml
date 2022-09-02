@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-deployment
+  labels:
+    app.kubernetes.io/name: database
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: database
+    spec:
+      containers:
+        - name: ejbca-mariadb
+          image: mariadb:10.5
+          ports:
+            - containerPort: 3306
+              name: mariadb
+              protocol: TCP
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejbca-database-credentials
+                  key: password-root
+            - name: MYSQL_DATABASE
+              value: "ejbca"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ejbca-database-credentials
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ejbca-database-credentials
+                  key: password
+          volumeMounts:
+            - name: mariadb-configmap
+              mountPath: /etc/mysql/config.d/
+      volumes:
+        - name: mariadb-configmap
+          configMap:
+            name: mariadb-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-svc
+  labels:
+    app.kubernetes.io/name: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: database
+  ports:
+    - port: 3306
+      targetPort: 3306
+      protocol: TCP
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  custom.cnf: |+
+    # MariaDB database server configuration file.
+    #
+    # For explanations see
+    # https://mariadb.com/kb/en/library/server-system-variables/
+    # https://mariadb.com/kb/en/library/xtradbinnodb-server-system-variables/
+    # https://mariadb.com/kb/en/library/galera-cluster-system-variables/
+    # https://mariadb.com/kb/en/library/wsrep_provider_options/
+    [mysqld]
+    
+    general_log = 1
+    general_log_file = /var/log/mysql/query.log
+    
+    character-set-server    = utf8
+    collation-server        = utf8_bin
+    max_connections         = 100
+    #skip-name-resolve
+    skip-ssl
+    max_allowed_packet      = 128M
+    query_cache_type        = OFF
+    innodb_buffer_pool_dump_at_shutdown = OFF
+    innodb_buffer_pool_load_at_startup  = OFF
+    transaction-isolation   = REPEATABLE-READ
+    innodb_flush_log_at_trx_commit = 1
+    innodb_autoinc_lock_mode       = 2
+    slave_exec_mode         = IDEMPOTENT
+    innodb_buffer_pool_size = 384M
+    innodb_log_file_size    = 64M
+    binlog_format           = row
+    #wsrep_provider          = /usr/lib/galera/libgalera_smm.so
+    #wsrep_on                = ON
+    #wsrep_provider_options  = ""
+    #wsrep_cluster_address   = gcomm://?pc.weight=1
+metadata:
+  name: mariadb-configmap
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ejbca-database-credentials
+type: Opaque
+data:
+  # "ejbca"
+  username: ZWpiY2E=
+  # "ejbca"
+  password: ZWpiY2E=
+  # "foo123"
+  password-root: Zm9vMTIz

@@ -1,0 +1,218 @@
+{{- if .Values.ejbca.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ejbca-ce.fullname" . }}
+  labels:
+    {{- include "ejbca-ce.ejbca.labels" . | nindent 4 }}
+    {{- if .Values.ejbca.ui.enabled }}
+    {{- include "ejbca-ce.ui.selectorLabels" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.ejbca.rr.enabled }}
+    {{- include "ejbca-ce.rr.selectorLabels" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.ejbca.lb.enabled }}
+    {{- include "ejbca-ce.lb.selectorLabels" . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- if .Values.ejbca.rr.enabled }}
+      {{- include "ejbca-ce.rr.selectorLabels" . | nindent 6 }}
+      {{- end }}
+      {{- if .Values.ejbca.ui.enabled }}
+      {{- include "ejbca-ce.ui.selectorLabels" . | nindent 6 }}
+      {{- end }}
+      {{- if .Values.ejbca.lb.enabled }}
+      {{- include "ejbca-ce.lb.selectorLabels" . | nindent 6 }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- if .Values.ejbca.rr.enabled }}
+        {{- include "ejbca-ce.rr.selectorLabels" . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.ejbca.ui.enabled }}
+        {{- include "ejbca-ce.ui.selectorLabels" . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.ejbca.lb.enabled }}
+        {{- include "ejbca-ce.lb.selectorLabels" . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ejbca-ce.serviceAccountName" . }}
+      initContainers:
+        {{- if .Values.ejbca.bootstrap }}
+        - name: "{{ .Values.ejbca.ejbcaImage.name }}-init"
+          image: "{{ .Values.ejbca.ejbcaImage.repository }}:{{ .Values.ejbca.ejbcaImage.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ejbca.ejbcaImage.pullPolicy }}
+          env:
+            - name: SHUTDOWN_AFTER_DEPLOY
+              value: "true"
+            - name: TLS_SETUP_ENABLED
+              value: "true"
+            - name: DATABASE_JDBC_URL
+              value: {{ printf "jdbc:mysql://%s:%d/ejbca?characterEncoding=utf8" .Values.database.host (.Values.database.port | int) }}
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: password
+            {{- if .Values.ejbca.eeConfig.customJavaOptions }}
+            - name: JAVA_OPTS_CUSTOM
+              value: {{ .Values.ejbca.eeConfig.customJavaOptions }}
+            {{- end }}
+        {{- end }}
+        - name: "ca-cert-locator"
+          image: "{{ .Values.ejbca.reverseProxy.caFinderImage.repository }}:{{ .Values.ejbca.reverseProxy.caFinderImage.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: password
+            - name: DATABASE_HOST
+              value: {{ .Values.database.host }}
+            - name: DATABASE_PORT
+              value: "{{ .Values.database.port }}"
+            - name: CERTIFICATE_DIRECTORY
+              value: "/usr/certs/"
+          volumeMounts:
+            - mountPath: /usr/certs/
+              name: httpd-bootstrap-mount
+      containers:
+        - name: httpd
+          image: "{{ .Values.ejbca.reverseProxy.image.repository }}:{{ .Values.ejbca.reverseProxy.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ejbca.reverseProxy.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: lb
+              containerPort: 8443
+              protocol: TCP
+            - name: ingress
+              containerPort: 8444
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+          volumeMounts:
+            - name: httpd-configmap
+              mountPath: /usr/local/apache2/conf/
+            - name: ce-certs
+              mountPath: /usr/local/certs
+            - name: httpd-bootstrap-mount
+              mountPath: /usr/local/cacerts
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        - name: {{ .Values.ejbca.ejbcaImage.name }}
+          image: "{{ .Values.ejbca.ejbcaImage.repository }}:{{ .Values.ejbca.ejbcaImage.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ejbca.ejbcaImage.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+            - name: https
+              containerPort: 8082
+              protocol: TCP
+            - name: ajp
+              containerPort: 8009
+              protocol: TCP
+          env:
+            - name: INITIAL_ADMIN
+              value: {{ .Values.ejbca.eeConfig.initialAdmin }}
+            - name: PROXY_AJP_BIND
+              value: "127.0.0.1"
+            - name: DATABASE_JDBC_URL
+              value: {{ printf "jdbc:mysql://%s:%d/ejbca?characterEncoding=utf8" .Values.database.host (.Values.database.port | int) }}
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: password
+            - name: LOG_AUDIT_TO_DB
+              value: "true"
+            - name: ADMINWEB_ACCESS
+              value: "{{ .Values.ejbca.eeConfig.adminWebAccess }}"
+            {{- if .Values.ejbca.logShipper.enabled }}
+            - name: LOG_STORAGE_LOCATION
+              value: {{ .Values.ejbca.logShipper.logPath }}
+            - name: LOG_STORAGE_MAX_SIZE_MB
+              value: "{{ .Values.ejbca.logShipper.maxStorageSize }}"
+            {{- end }}
+            {{- if .Values.ejbca.eeConfig.customJavaOptions }}
+            - name: JAVA_OPTS_CUSTOM
+              value: {{ .Values.ejbca.eeConfig.customJavaOptions }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              port: 8080
+              path: /ejbca/publicweb/healthcheck/ejbcahealth
+            failureThreshold: 50 # 50 * 2 seconds + 45-second delay gives 145 seconds for EJBCA to start
+            periodSeconds: 2
+            initialDelaySeconds: 45
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /ejbca/publicweb/healthcheck/ejbcahealth
+          volumeMounts:
+          {{- if .Values.ejbca.logShipper.enabled }}
+            - mountPath: {{ .Values.ejbca.logShipper.logPath }}
+              name: log-shipper
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.ejbca.logShipper.enabled }}
+        - name: log-shipper
+          image: "{{ .Values.ejbca.logShipper.image.repository }}:{{ .Values.ejbca.logShipper.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ejbca.logShipper.image.pullPolicy }}
+          ports:
+          {{- range .Values.ejbca.logShipper.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort}}
+              protocol: {{ .protocol }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /config
+              name: {{ .Values.ejbca.logShipper.configMapName }}
+            - mountPath: {{ .Values.ejbca.logShipper.logPath }}
+              name: log-shipper
+          command: ["/fluent-bit/bin/fluent-bit"]
+          args: ["-c", "/config/fluent-bit.conf"]
+        {{- end}}
+      volumes:
+        - name: httpd-configmap
+          configMap:
+            name: httpd-configmap
+        {{- if .Values.ejbca.logShipper.enabled }}
+        - name: log-shipper
+          emptyDir: {}
+        - name: {{ .Values.ejbca.logShipper.configMapName }}
+          configMap:
+            name: {{ .Values.ejbca.logShipper.configMapName }}
+        {{- end }}
+        - name: ce-certs
+          configMap:
+            name: ce-certs
+        - name: httpd-bootstrap-mount
+          emptyDir: {}
+{{- end -}}

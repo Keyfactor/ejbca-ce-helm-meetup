@@ -1,0 +1,22 @@
+{{- if .Values.ejbca.enabled -}}
+{{- if .Values.ejbca.rr.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.ejbca.rr.name }}
+  labels:
+    {{- include "ejbca-ce.ejbca.labels" . | nindent 4 }}
+    {{- include "ejbca-ce.rr.selectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ejbca-ce.rr.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+  ports:
+  {{- range .Values.ejbca.rr.ports }}
+  - name: {{ .name }}
+    port: {{ .port }}
+    protocol: TCP
+    targetPort: 8444
+  {{- end -}}
+{{- end -}}
+{{- end -}}

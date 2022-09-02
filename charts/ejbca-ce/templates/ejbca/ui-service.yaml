@@ -1,0 +1,26 @@
+{{- if .Values.ejbca.enabled -}}
+{{- if .Values.ejbca.ui.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.ejbca.ui.name }}
+  labels:
+    {{- include "ejbca-ce.ejbca.labels" . | nindent 4 }}
+    {{- include "ejbca-ce.ui.selectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ejbca-ce.ui.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+  ports:
+  {{- range .Values.ejbca.ui.ports }}
+  - name: {{ .name }}
+    port: {{ .port }}
+    protocol: TCP
+    targetPort: 8444
+  {{- end }}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+{{- end }}
+{{- end -}}

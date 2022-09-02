@@ -1,0 +1,22 @@
+{{- if .Values.ejbca.enabled -}}
+{{- if .Values.ejbca.logShipper.enabled -}}
+apiVersion: v1
+data:
+  fluent-bit.conf: |+
+    [SERVICE]
+        Daemon       Off
+
+    # collect docker logs using fluend logging driver
+    [INPUT]
+        Name   tail
+        Path   {{ .Values.ejbca.logShipper.logPath }}
+
+    # send logs to stdout
+    [OUTPUT]
+        Name stdout
+        Match *
+kind: ConfigMap
+metadata:
+  name: {{ .Values.ejbca.logShipper.configMapName }}
+{{- end -}}
+{{- end -}}

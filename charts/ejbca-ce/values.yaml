@@ -1,0 +1,148 @@
+replicaCount: 1
+
+ejbca:
+  bootstrap: true
+  # If enabled is true, Helm will create a deployment with an EJBCA CE instance behind a reverse proxy in HTTP proxy bind mode.
+  enabled: true
+  eeConfig:
+    # ;PublicAccessAuthenticationToken:TRANSPORT_ANY;
+    # ManagementCA;WITH_COMMONNAME;SuperAdmin
+    initialAdmin: "ManagementCA;WITH_COMMONNAME;SuperAdmin"
+    adminWebAccess: "true"
+    customJavaOptions: "-Xms128m -Xmx2048m -Xss256k -XX:MetaspaceSize=160m -XX:MaxMetaspaceSize=512m"
+  ejbcaImage:
+    name: ejbca-ce
+    repository: keyfactor/ejbca-ce
+    tag: "7.9.0.2"
+    pullPolicy: IfNotPresent
+  reverseProxy:
+    image:
+      repository: httpd
+      pullPolicy: IfNotPresent
+      tag: "2.4"
+    caFinderImage:
+      repository: m8rmclarenkf/ejbca-management-ca-locator
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+  logShipper:
+    # Set to true to deploy log shipper and mount associated volumes.
+    enabled: false
+    # Name of configmap that contains configuration for the log shipper container configured in the image section
+    configMapName: fluent-bit-conf
+    logLevel: INFO
+    # Path that EJBCA will store logs in for the log shipper to pick up
+    logPath: /opt/log
+    # Maximim size in MB
+    maxStorageSize: 256
+    image:
+      repository: fluent/fluent-bit
+      tag: latest
+      pullPolicy: IfNotPresent
+    ports:
+      - name: http
+        containerPort: 80
+        protocol: TCP
+  ui:
+    # Configuration for the EJBCA UI ingress and associated service.
+    enabled: true
+    name: ejbca-ui
+    host: ""
+    # Configure ingress classname associated with ingress controller used by cluster.
+    ingressClassName: "nginx"
+    ingressAnnotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    ports:
+      - name: https
+        port: 8443
+        paths:
+          - path: /ejbca/ra
+            pathType: Prefix
+          - path: /ejbca/adminweb
+            pathType: Prefix
+          - path: /ejbca
+            pathType: Prefix
+  rr:
+    # Configuration for paths used for programmatic access to EJBCA.
+    enabled: true
+    name: ejbca-rr
+    host: ""
+    # Configure ingress classname associated with ingress controller used by cluster.
+    ingressClassName: "nginx"
+    ingressAnnotations: {}
+    ports:
+      - name: https
+        port: 443
+        paths:
+          - path: /.well-known
+            pathType: Prefix
+          - path: /ejbca/ejbcaws
+            pathType: Prefix
+          - path: /ejbca/ejbca-rest-api
+            pathType: Prefix
+  lb:
+    enabled: true
+    name: ejbca-lb-svc
+    ports:
+      - name: https
+        port: 443
+        nodePort: 32713
+        targetPort: 8443
+      - name: http
+        port: 80
+        nodePort: 32513
+        targetPort: 8080
+
+database:
+  localDeployment:
+    # If deployDatabase is enabled, a pod is deployed with a ClusterIP service.
+    deployDatabase: false
+    # A secret is also created containing the credentials
+    username: ejbca
+    password: ejbca
+    passwordRoot: foo123
+    image:
+      repository: mariadb
+      pullPolicy: IfNotPresent
+      tag: "10.5"
+  # If deployDatabase is true, endpoint is used as the name label used by a database deployment and associated service.
+  # In both cases, the endpoint is used by EJBCA to connect to the database at the port configured below.
+  host: database-svc
+  port: 3306
+  # Database secret name is required to securely retrieve database credentials. Used regardless of localDeployment state
+  secretName: ejbca-database-credentials
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

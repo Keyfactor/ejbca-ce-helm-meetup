@@ -1,0 +1,52 @@
+{{- if .Values.database.localDeployment.deployDatabase -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.database.host }}
+  labels:
+    {{- include "ejbca-ce.database.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ejbca-ce.database.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ejbca-ce.database.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ejbca-ce.serviceAccountName" . }}
+      containers:
+        - name: {{ .Values.database.host }}
+          image: "{{ .Values.database.localDeployment.image.repository }}:{{ .Values.database.localDeployment.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.database.localDeployment.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.database.port }}
+              protocol: TCP
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: password-root
+            - name: MYSQL_DATABASE
+              value: "ejbca"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: password
+          volumeMounts:
+            - name: mariadb-configmap
+              mountPath: /etc/mysql/config.d/
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: mariadb-configmap
+          configMap:
+            name: mariadb-configmap
+{{- end -}}

@@ -1,0 +1,18 @@
+{{- if .Values.database.localDeployment.deployDatabase -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.database.host }}
+  labels:
+    {{- include "ejbca-ce.database.labels" . | nindent 4 }}
+    {{- include "ejbca-ce.database.selectorLabels" . | nindent 4 }}
+spec:
+  ports:
+    - name: {{ .Values.database.host }}
+      port: {{ .Values.database.port }}
+      protocol: TCP
+      targetPort: {{ .Values.database.port }}
+  selector:
+    {{- include "ejbca-ce.database.selectorLabels" . | nindent 4 }}
+  type: "ClusterIP"
+{{- end -}}
