@@ -44,7 +44,7 @@ ejbca:
         protocol: TCP
   ui:
     # Configuration for the EJBCA UI ingress and associated service.
-    enabled: true
+    enabled: false
     name: ejbca-ui
     host: ""
     # Configure ingress classname associated with ingress controller used by cluster.
@@ -65,7 +65,7 @@ ejbca:
             pathType: Prefix
   rr:
     # Configuration for paths used for programmatic access to EJBCA.
-    enabled: true
+    enabled: false
     name: ejbca-rr
     host: ""
     # Configure ingress classname associated with ingress controller used by cluster.
