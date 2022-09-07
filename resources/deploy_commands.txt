@@ -1,0 +1,69 @@
+EJBCA  Meetup Steps
+
+
+# Git lone the EJBCA Helm Meetup Repository
+
+git clone https://github.com/Keyfactor/ejbca-ce-helm-meetup.git
+
+#Change directory to ejbca-ce-helm and list contents of the directory:
+cd ejbca-ce-helm-meetup/
+
+
+#DEPLOY DATABASE
+
+#Create a Kubernetes namespace: 
+
+kubectl create ns ejbca
+
+#Deploy MariaDB Database: 
+
+kubectl apply -f mariadb.yaml -n ejbca
+
+
+
+#DEPLOY EJBCA HELM CHART
+
+#Change directory: 
+
+cd /home/ec2-user/ejbca-ce-helm-meetup/charts/ejbca-ce
+
+#Modify /home/ec2-user/ejbca-ce-helm-meetup/charts/ejbca-ce/values.yaml: 
+#Change ui: enabled: to false
+#Change rr: enabled: to false
+
+#Package Helm: 
+
+helm package .
+
+#Install EJBCA Helm: 
+
+helm install ejbca -f values.yaml ejbca-ce-1.0.3.tgz -n ejbca
+
+#confirm deploy started: 
+
+kubectl get deploy -n ejbca
+
+
+#confirm pods started deploying: 
+
+kubectl get pods -n ejbca 
+
+
+#Tail EJBCA container logs for superadmin password. Subsitute pod name from the kubectl get pod command:
+
+kubectl logs -f <ejbca_pod_name> -c ejbca-ce-init -n ejbca
+
+#Copy the superadmin password
+
+
+
+#confirm ejbca pod is up: 
+
+kubectl get pods -n ejbca
+
+
+#confirm deploy completed: 
+
+kubectl get deploy -n ejbca
+
+
