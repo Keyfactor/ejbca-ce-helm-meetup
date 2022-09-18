@@ -12,19 +12,34 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 func main() {
+    dbtype := os.Getenv("DATABASE_TYPE")
 	username := os.Getenv("DATABASE_USER")
 	password := os.Getenv("DATABASE_PASSWORD")
 	host := os.Getenv("DATABASE_HOST")
 	port := os.Getenv("DATABASE_PORT")
-
-	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/ejbca?charset=utf8", username, password, host, port)
+	name := os.Getenv("DATABASE_NAME")
+	properties := os.Getenv("DATABASE_PROPERTIES")
 
 	log.Printf("Attempting to open connection to EJBCA database at %s:%s", host, port)
 
-	db, err := sql.Open("mysql", connectionString)
+    var connectionString string
+    var db *sql.DB
+    var err error
+
+    if dbtype == "postgresql" {
+        connectionString = fmt.Sprintf("postgres://%s:%s@%s:%s/%s%s", username, password, host, port, name, properties)
+        log.Printf("Connection string: %s", connectionString)
+        db, err = sql.Open("postgres", connectionString)
+    } else if dbtype == "mariadb" {
+        connectionString = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s%s", username, password, host, port, name, properties)
+        log.Printf("Connection string: %s", connectionString)
+        db, err = sql.Open("mysql", connectionString)
+    }
+
 	if err != nil {
 		log.Fatal(err)
 	}
