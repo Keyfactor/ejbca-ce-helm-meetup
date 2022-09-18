@@ -107,11 +107,19 @@ database:
       pullPolicy: IfNotPresent
       tag: "10.5"
   # If deployDatabase is true, endpoint is used as the name label used by a database deployment and associated service.
-  # In both cases, the endpoint is used by EJBCA to connect to the database at the port configured below.
-  host: database-svc
-  port: 3306
+
   # Database secret name is required to securely retrieve database credentials. Used regardless of localDeployment state
   secretName: ejbca-database-credentials
+
+  # database technology, for example mariadb, postgresql
+  type: "postgresql"
+  host: "database-svc"
+  port: 5432
+  name: "ejbca"
+  username: "ejbcauser"
+  password: "your-strong-password"
+  # optional to add specific properties to database connection string
+  properties: ""
 
 serviceAccount:
   # Specifies whether a service account should be created

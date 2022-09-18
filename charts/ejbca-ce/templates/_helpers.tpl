@@ -60,3 +60,20 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- /*
+this will take the databse values and convert to the jdbcUrl format
+*/}}
+{{- define "ejbca-ce.util.format.jdbcUrl" -}}
+{{- $ := index . 0 }}
+{{- $type := $.Values.database.type -}}
+{{- $properties := $.Values.database.properties -}}
+{{- $host := $.Values.database.host -}}
+{{- $port := $.Values.database.port | int -}}
+{{- $name := $.Values.database.name -}}
+{{- if eq $type "postgresql" -}}
+{{- printf "jdbc:postgresql://%s:%d/%s%s" $host $port $name $properties }}
+{{- else if eq $type "mariadb" -}}
+{{- printf "jdbc:mysql://%s:%d/%s%s" $host $port $name $properties }}
+{{- end -}}
+{{- end -}}

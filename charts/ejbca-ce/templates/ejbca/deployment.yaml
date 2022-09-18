@@ -54,7 +54,7 @@ spec:
             - name: TLS_SETUP_ENABLED
               value: "true"
             - name: DATABASE_JDBC_URL
-              value: {{ printf "jdbc:mysql://%s:%d/ejbca?characterEncoding=utf8" .Values.database.host (.Values.database.port | int) }}
+              value: {{ include "ejbca-ce.util.format.jdbcUrl" (list . ) | quote }}
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
@@ -88,6 +88,12 @@ spec:
               value: {{ .Values.database.host }}
             - name: DATABASE_PORT
               value: "{{ .Values.database.port }}"
+            - name: DATABASE_NAME
+              value: {{ .Values.database.name }}
+            - name: DATABASE_PROPERTIES
+              value: {{ .Values.database.properties }}
+            - name: DATABASE_TYPE
+              value: {{ .Values.database.type }}
             - name: CERTIFICATE_DIRECTORY
               value: "/usr/certs/"
           volumeMounts:
@@ -138,7 +144,7 @@ spec:
             - name: PROXY_AJP_BIND
               value: "127.0.0.1"
             - name: DATABASE_JDBC_URL
-              value: {{ printf "jdbc:mysql://%s:%d/ejbca?characterEncoding=utf8" .Values.database.host (.Values.database.port | int) }}
+              value: {{ include "ejbca-ce.util.format.jdbcUrl" (list . ) | quote }}
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
